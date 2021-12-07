@@ -1,74 +1,68 @@
 var board,
-  game = new Chess();
+  chessGame = new Chess();
 
 /*The "AI" part starts here */
 
-var minimaxRoot = function (depth, game, isMaximisingPlayer) {
-  var newGameMoves = game.ugly_moves();
-  var bestMove = -9999;
-  var bestMoveFound;
+var minMax = function (depth, chessGame, player) {
+  var moves = chessGame.ugly_moves();
+  var best = -9999;
+  var moveFound;
 
-  for (var i = 0; i < newGameMoves.length; i++) {
-    var newGameMove = newGameMoves[i];
-    game.ugly_move(newGameMove);
-    var value = minimax(depth - 1, game, !isMaximisingPlayer);
-    game.undo();
-    if (value >= bestMove) {
-      bestMove = value;
-      bestMoveFound = newGameMove;
+  for (var i = 0; i < moves.length; i++) {
+    var newMove = moves[i];
+    chessGame.ugly_move(newMove);
+    var value = minimax(depth - 1, chessGame, !player);
+    chessGame.undo();
+    if (value >= best) {
+      best = value;
+      moveFound = newMove;
     }
   }
-  return bestMoveFound;
+  return moveFound;
 };
 
-var minimax = function (depth, game, isMaximisingPlayer) {
-  positionCount++;
+var minimax = function (depth, chessGame, player) {
+  pos++;
   if (depth === 0) {
-    return -evaluateBoard(game.board());
+    return -evalBoard(chessGame.board());
   }
 
-  var newGameMoves = game.ugly_moves();
+  var newMoves = chessGame.ugly_moves();
 
-  if (isMaximisingPlayer) {
-    var bestMove = -9999;
-    for (var i = 0; i < newGameMoves.length; i++) {
-      game.ugly_move(newGameMoves[i]);
-      bestMove = Math.max(
-        bestMove,
-        minimax(depth - 1, game, !isMaximisingPlayer)
-      );
-      game.undo();
+  if (player) {
+    var best = -9999;
+    for (var i = 0; i < newMoves.length; i++) {
+      chessGame.ugly_move(newMoves[i]);
+      best = Math.max(best, minimax(depth - 1, chessGame, !player));
+      chessGame.undo();
     }
-    return bestMove;
+    return best;
   } else {
-    var bestMove = 9999;
-    for (var i = 0; i < newGameMoves.length; i++) {
-      game.ugly_move(newGameMoves[i]);
-      bestMove = Math.min(
-        bestMove,
-        minimax(depth - 1, game, !isMaximisingPlayer)
-      );
-      game.undo();
+    var best = 9999;
+    for (var i = 0; i < newMoves.length; i++) {
+      chessGame.ugly_move(newMoves[i]);
+      best = Math.min(best, minimax(depth - 1, chessGame, !player));
+      chessGame.undo();
     }
-    return bestMove;
+    return best;
   }
 };
 
-var evaluateBoard = function (board) {
-  var totalEvaluation = 0;
+var evalBoard = function (board) {
+  var totalEval = 0;
   for (var i = 0; i < 8; i++) {
     for (var j = 0; j < 8; j++) {
-      totalEvaluation = totalEvaluation + getPieceValue(board[i][j]);
+      totalEval = totalEval + getPieceValue(board[i][j]);
     }
   }
-  return totalEvaluation;
+  return totalEval;
 };
 
 var getPieceValue = function (piece) {
   if (piece === null) {
     return 0;
   }
-  var getAbsoluteValue = function (piece) {
+  var getAbsVal = function (piece) {
     if (piece.type === "p") {
       return 10;
     } else if (piece.type === "r") {
@@ -85,16 +79,16 @@ var getPieceValue = function (piece) {
     throw "Unknown piece type: " + piece.type;
   };
 
-  var absoluteValue = getAbsoluteValue(piece, piece.color === "w");
-  return piece.color === "w" ? absoluteValue : -absoluteValue;
+  var absVal = getAbsVal(piece, piece.color === "w");
+  return piece.color === "w" ? absVal : -absVal;
 };
 
 /* board visualization and games state handling starts here*/
 
-var onDragStart = function (source, piece, position, orientation) {
+var onStart = function (source, piece, position, orientation) {
   if (
-    game.in_checkmate() === true ||
-    game.in_draw() === true ||
+    chessGame.in_checkmate() === true ||
+    chessGame.in_draw() === true ||
     piece.search(/^b/) !== -1
   ) {
     return false;
@@ -102,41 +96,41 @@ var onDragStart = function (source, piece, position, orientation) {
 };
 
 var makeBestMove = function () {
-  var bestMove = getBestMove(game);
-  game.ugly_move(bestMove);
-  board.position(game.fen());
-  renderMoveHistory(game.history());
-  if (game.game_over()) {
+  var bestMove = getBestMove(chessGame);
+  chessGame.ugly_move(bestMove);
+  board.position(chessGame.fen());
+  moveHistory(chessGame.history());
+  if (chessGame.game_over()) {
     alert("Game over");
   }
 };
 
-var positionCount;
+var pos;
 var getBestMove = function (game) {
   if (game.game_over()) {
     alert("Game over");
   }
 
-  positionCount = 0;
+  pos = 0;
   var depth = parseInt($("#search-depth").find(":selected").text());
 
   var d = new Date().getTime();
-  var bestMove = minimaxRoot(depth, game, true);
+  var bestMove = minMax(depth, game, true);
   var d2 = new Date().getTime();
   var moveTime = d2 - d;
-  var positionsPerS = (positionCount * 1000) / moveTime;
+  var posPerSec = (pos * 1000) / moveTime;
 
-  $("#position-count").text(positionCount);
+  $("#position-count").text(pos);
   $("#time").text(moveTime / 1000 + "s");
-  $("#positions-per-s").text(positionsPerS);
+  $("#positions-per-s").text(posPerSec);
   return bestMove;
 };
 
-var renderMoveHistory = function (moves) {
-  var historyElement = $("#move-history").empty();
-  historyElement.empty();
+var moveHistory = function (moves) {
+  var historyEle = $("#move-history").empty();
+  historyEle.empty();
   for (var i = 0; i < moves.length; i = i + 2) {
-    historyElement.append(
+    historyEle.append(
       "<span>" +
         moves[i] +
         " " +
@@ -144,11 +138,11 @@ var renderMoveHistory = function (moves) {
         "</span><br>"
     );
   }
-  historyElement.scrollTop(historyElement[0].scrollHeight);
+  historyEle.scrollTop(historyEle[0].scrollHeight);
 };
 
 var onDrop = function (source, target) {
-  var move = game.move({
+  var move = chessGame.move({
     from: source,
     to: target,
     promotion: "q",
@@ -159,16 +153,16 @@ var onDrop = function (source, target) {
     return "snapback";
   }
 
-  renderMoveHistory(game.history());
+  moveHistory(chessGame.history());
   window.setTimeout(makeBestMove, 250);
 };
 
 var onSnapEnd = function () {
-  board.position(game.fen());
+  board.position(chessGame.fen());
 };
 
 var onMouseoverSquare = function (square, piece) {
-  var moves = game.moves({
+  var moves = chessGame.moves({
     square: square,
     verbose: true,
   });
@@ -204,7 +198,7 @@ var greySquare = function (square) {
 var cfg = {
   draggable: true,
   position: "start",
-  onDragStart: onDragStart,
+  onDragStart: onStart,
   onDrop: onDrop,
   onMouseoutSquare: onMouseoutSquare,
   onMouseoverSquare: onMouseoverSquare,
